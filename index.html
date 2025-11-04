@@ -121,7 +121,7 @@
       }
       thead th {
         position: sticky;
-        top: 106px;
+        top: 0;
         background: #0e0e10;
         border-bottom: 1px solid #222;
         padding: 8px;
@@ -250,6 +250,33 @@
       }
       .link a:hover {
         text-decoration: underline;
+      }
+      #toTopBtn {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 999;
+        background: var(--accent);
+        color: #000;
+        border: none;
+        border-radius: 50%;
+        width: 44px;
+        height: 44px;
+        font-size: 22px;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        opacity: 0.8;
+        transition: opacity 0.2s;
+        display: none; /* hidden until scroll */
+        display: flex; /* center emoji */
+        align-items: center; /* vertically center */
+        justify-content: center; /* horizontally center */
+        line-height: 1; /* remove extra emoji padding */
+        padding: 0;
+      }
+
+      #toTopBtn:hover {
+        opacity: 1;
       }
     </style>
   </head>
@@ -906,7 +933,16 @@
       window.addEventListener("DOMContentLoaded", () => {
         setupUI();
         buildTable();
+        // show/hide and scroll to top
+        const toTopBtn = document.getElementById("toTopBtn");
+        window.addEventListener("scroll", () => {
+          toTopBtn.style.display = window.scrollY > 400 ? "block" : "none";
+        });
+        toTopBtn.addEventListener("click", () => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
       });
     </script>
+    <button id="toTopBtn" title="Back to top">⬆️</button>
   </body>
 </html>
