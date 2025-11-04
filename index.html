@@ -28,14 +28,13 @@
         background: var(--bg);
         color: var(--text);
       }
+      /* --- scroll behavior: header scrolls away, table header sticks to top --- */
       header {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        backdrop-filter: blur(12px);
-        background: rgba(11, 11, 12, 0.6);
-        border-bottom: 1px solid #222;
+        position: static !important;
+        top: auto !important;
+        z-index: auto !important;
       }
+
       .wrap {
         max-width: 1200px;
         margin: 0 auto;
@@ -166,7 +165,7 @@
         color: var(--muted);
       }
       .sticky-actions {
-        position: sticky;
+        position: static;
         top: 70px;
         z-index: 9;
         display: flex;
