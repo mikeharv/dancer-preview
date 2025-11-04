@@ -208,6 +208,17 @@
         justify-content: start;
         align-items: start;
       }
+      /* Body-glyph sizing (colors column) */
+      .glyph {
+        width: 60px;
+        height: 60px;
+        display: inline-block;
+      }
+      .glyph svg {
+        width: 60px;
+        height: 60px;
+        display: block;
+      }
 
       .colors .sw:first-child {
         grid-column: 1 / span 2; /* span both columns across the top */
@@ -391,7 +402,7 @@
         <thead>
           <tr>
             <th style="width: 140px">Preview</th>
-            <th style="width: 90px">Colors</th>
+            <th style="width: 90px">Body Colors</th>
             <th>URL</th>
             <th>Parts</th>
             <th>Status</th>
@@ -628,7 +639,43 @@
         };
         return sw;
       }
+      // SVG “T-body” glyph: body_color fills base T, secondary = chest square, tertiary = pants
+      function makeGlyph(bodyHex, secondaryHex, tertiaryHex) {
+        const wrap = document.createElement("span");
+        wrap.className = "glyph";
+        const ns = "http://www.w3.org/2000/svg";
+        const svg = document.createElementNS(ns, "svg");
+        svg.setAttribute("viewBox", "0 0 60 60");
 
+        const size = 25;
+        const gap = 0;
+        const centerX = 30;
+        const centerY = 30;
+
+        // Coordinates for squares
+        const squares = [
+          { x: centerX - size - gap, y: centerY - size - gap, fill: bodyHex }, // top-left body
+          { x: centerX, y: centerY - size - gap, fill: secondaryHex }, // top-center secondary
+          { x: centerX + size + gap, y: centerY - size - gap, fill: bodyHex }, // top-right body
+          { x: centerX, y: centerY, fill: tertiaryHex }, // middle third
+          { x: centerX, y: centerY + size + gap, fill: bodyHex } // bottom body
+        ];
+
+        squares.forEach((s) => {
+          const r = document.createElementNS(ns, "rect");
+          r.setAttribute("x", s.x - size / 2);
+          r.setAttribute("y", s.y - size / 2);
+          r.setAttribute("width", size);
+          r.setAttribute("height", size);
+          r.setAttribute("fill", s.fill || "transparent");
+          // r.setAttribute("stroke", "#222");
+          // r.setAttribute("rx", "2");
+          svg.appendChild(r);
+        });
+
+        wrap.appendChild(svg);
+        return wrap;
+      }
       async function buildTable() {
         const folder = el.folder.value;
         const variants = parseVariantRange(el.variants.value);
@@ -717,6 +764,8 @@
                   makeSwatch(sc, "secondary_color"),
                   makeSwatch(tc, "tertiary_color")
                 );
+                const glyph = makeGlyph(bc, sc, tc);
+                colorsWrap.replaceChildren(glyph);
               })
               .catch(() => {
                 // Leave placeholders if not found
