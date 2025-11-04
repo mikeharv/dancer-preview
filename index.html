@@ -237,6 +237,20 @@
       .sw[title] {
         outline: none;
       }
+      /* metadata link under the PNG url */
+      .link {
+        display: block;
+        /* font-size: 14px; */
+        color: var(--muted);
+        margin-top: 4px;
+      }
+      .link a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .link a:hover {
+        text-decoration: underline;
+      }
     </style>
   </head>
   <body>
@@ -773,12 +787,24 @@
 
             // URL cell
             const tdUrl = document.createElement("td");
-            const a = document.createElement("a");
-            a.href = url;
-            a.target = "_blank";
-            a.rel = "noreferrer noopener";
-            a.textContent = url;
-            tdUrl.appendChild(a);
+            const urlDiv = document.createElement("div");
+            urlDiv.className = "link";
+            const urlA = document.createElement("a");
+            urlA.href = url;
+            urlA.target = "_blank";
+            urlA.rel = "noreferrer noopener";
+            urlA.textContent = url;
+            urlDiv.appendChild(urlA);
+            tdUrl.appendChild(urlDiv);
+            const metaDiv = document.createElement("div");
+            metaDiv.className = "link";
+            const metaA = document.createElement("a");
+            metaA.href = metaUrl;
+            metaA.textContent = metaUrl;
+            metaA.target = "_blank";
+            metaA.rel = "noreferrer noopener";
+            metaDiv.appendChild(metaA);
+            tdUrl.appendChild(metaDiv);
 
             // Parts cell
             const tdParts = document.createElement("td");
