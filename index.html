@@ -417,6 +417,7 @@
           <tr>
             <th style="width: 140px">Preview</th>
             <th style="width: 90px">Body Colors</th>
+            <th>Animate</th>
             <th>URL</th>
             <th>Parts</th>
             <th>Status</th>
@@ -785,6 +786,27 @@
                 // Leave placeholders if not found
               });
 
+            // Animate cell
+            // Animate button cell
+            const tdAnimate = document.createElement("td");
+            const animateBtn = document.createElement("button");
+            animateBtn.type = "button";
+            animateBtn.textContent = "Animate";
+
+            animateBtn.addEventListener("click", () => {
+              // url looks like: .../<folder>/<dancer>.png
+              const m = url.match(/\/([^/]+)\/([^/]+)\.png$/);
+              if (!m) return;
+              const path = m[1];
+              const dancer = m[2];
+              const href = `https://studio.code.org/courses/mix-move-ai-2025/units/1/lessons/1/levels/3?path=${encodeURIComponent(
+                path
+              )}&dancer=${encodeURIComponent(dancer)}&body=default`;
+              window.open(href, "_blank", "noopener");
+            });
+
+            tdAnimate.appendChild(animateBtn);
+
             // URL cell
             const tdUrl = document.createElement("td");
             const urlDiv = document.createElement("div");
@@ -830,6 +852,7 @@
 
             tr.appendChild(tdPrev);
             tr.appendChild(tdColors);
+            tr.appendChild(tdAnimate);
             tr.appendChild(tdUrl);
             tr.appendChild(tdParts);
             tr.appendChild(tdStatus);
