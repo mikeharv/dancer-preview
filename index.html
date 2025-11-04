@@ -199,15 +199,22 @@
         padding: 6px 8px;
         font-size: 12px;
       }
-      /* Stack the three color swatches vertically */
+      /* Layout the color swatches: large body color on top, two smaller side-by-side underneath */
       .colors {
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: repeat(2, 22px); /* for secondary/tertiary row */
+        grid-template-rows: auto auto;
         gap: 6px;
-        align-items: flex-start;
-        justify-content: center;
-        height: 100%;
+        justify-content: start;
+        align-items: start;
       }
+
+      .colors .sw:first-child {
+        grid-column: 1 / span 2; /* span both columns across the top */
+        width: 44px;
+        height: 44px;
+      }
+
       .sw {
         width: 18px;
         height: 18px;
