@@ -315,13 +315,26 @@
               value="120"
             />
           </div>
-          <div class="field" style="grid-column: span 3">
+          <div class="field" style="grid-column: span 2">
             <label>Preview background</label>
             <select id="previewBg">
               <option value="#000000" selected>Black</option>
               <option value="#ffffff">White</option>
               <option value="#00ff00">Neon green</option>
             </select>
+          </div>
+          <div class="field" style="grid-column: span 1">
+            <label
+              style="
+                display: inline-flex;
+                gap: 8px;
+                align-items: center;
+                margin-left: 12px;
+              "
+            >
+              <input id="mirrorToggle" type="checkbox" checked />
+              <span>Mirror Images</span>
+            </label>
           </div>
           <div
             class="sticky-actions"
@@ -941,6 +954,54 @@
         toTopBtn.addEventListener("click", () => {
           window.scrollTo({ top: 0, behavior: "smooth" });
         });
+        // --- Mirror Images (RAF) ---
+        (() => {
+          const FLIP_INTERVAL_MS = 750; // how often to flip (tweak as you like)
+          let mirrorEnabled = true;
+          let mirrorState = false; // false = normal, true = flipped
+          let lastFlip = 0;
+          let rafId = null;
+
+          const applyMirrorState = () => {
+            const imgs = document.querySelectorAll(".preview img");
+            const transform = mirrorState ? "scaleX(-1)" : "scaleX(1)";
+            for (const img of imgs) img.style.transform = transform;
+          };
+
+          const tick = (t) => {
+            if (!mirrorEnabled) {
+              rafId = null;
+              return;
+            }
+            if (t - lastFlip >= FLIP_INTERVAL_MS) {
+              mirrorState = !mirrorState;
+              lastFlip = t;
+              applyMirrorState();
+            }
+            rafId = requestAnimationFrame(tick);
+          };
+
+          // wire the toggle
+          const mirrorToggle = document.getElementById("mirrorToggle");
+          if (mirrorToggle) mirrorToggle.checked = true;
+          if (mirrorEnabled && !rafId) rafId = requestAnimationFrame(tick);
+
+          if (!mirrorToggle) return; // if the control isn't on this page, bail quietly
+
+          mirrorToggle.addEventListener("change", (e) => {
+            mirrorEnabled = e.target.checked;
+            // reset state and clear any transforms
+            mirrorState = false;
+            lastFlip = 0;
+            applyMirrorState(); // ensures we return to scaleX(1) when disabled
+            if (mirrorEnabled && !rafId) rafId = requestAnimationFrame(tick);
+          });
+
+          // If your table is rebuilt dynamically, reapply current mirror state afterward:
+          // e.g., call applyMirrorState() at the end of your buildTable() function.
+          // (This keeps newly-added <img> elements in sync.)
+          window.applyMirrorState = applyMirrorState; // optional: expose for reuse
+        })();
       });
     </script>
     <button id="toTopBtn" title="Back to top">⬆️</button>
