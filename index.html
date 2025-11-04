@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Image Table Viewer</title>
+  <style>
+    :root {
+      --bg: #0b0b0c;
+      --card: #141416;
+      --text: #e8e8ea;
+      --muted: #a9a9b2;
+      --accent: #5bd4ff;
+      --bad: #ff6b6b;
+      --good: #2ecc71;
+      --warn: #ffd166;
+      --prev-bg: #000000; /* preview background default: black */
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: var(--bg); color: var(--text);
+    }
+    header { position: sticky; top: 0; z-index: 10; backdrop-filter: blur(12px); background: rgba(11,11,12,.6); border-bottom: 1px solid #222; }
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+    h1 { margin: 0 0 8px; font-size: 18px; letter-spacing: .3px; }
+    .controls { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; align-items: start; }
+    .field { background: var(--card); border: 1px solid #26262a; border-radius: 10px; padding: 10px 12px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    select, input[type="number"], input[type="text"] { width: 100%; background: #0f0f11; color: var(--text); border: 1px solid #2a2a2f; border-radius: 8px; padding: 8px 10px; }
+    button { appearance: none; background: var(--accent); color: #001018; border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    button.secondary { background: #2a2a2f; color: var(--text); border: 1px solid #3a3a40; }
+    .status { font-size: 12px; color: var(--muted); }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .ok { background: rgba(46, 204, 113, .15); color: var(--good); border: 1px solid rgba(46,204,113,.3); }
+    .bad { background: rgba(255, 107, 107, .15); color: var(--bad); border: 1px solid rgba(255,107,107,.35); }
+    .warn { background: rgba(255, 209, 102, .15); color: var(--warn); border: 1px solid rgba(255,209,102,.35); }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    thead th { position: sticky; top: 106px; background: #0e0e10; border-bottom: 1px solid #222; padding: 8px; text-align: left; font-size: 12px; color: var(--muted); }
+    tbody td { border-bottom: 1px solid #1b1b1f; padding: 10px 8px; vertical-align: top; }
+    tbody tr:hover { background: #111114; }
+    .preview { width: 120px; height: 120px; background: var(--prev-bg); border: 1px dashed #2a2a2f; border-radius: 12px; display: grid; place-items: center; overflow: hidden; }
+    img { max-width: 100%; max-height: 100%; display: block; image-rendering: auto; }
+    code { background: #121215; border: 1px solid #24242a; color: #d7d7db; padding: 2px 6px; border-radius: 6px; }
+    .grid-note { font-size: 12px; color: var(--muted); }
+    .sticky-actions { position: sticky; top: 70px; z-index: 9; display: flex; gap: 8px; }
+    .spacer { height: 6px; }
+    .checkgrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; max-height: 200px; overflow: auto; }
+    .checkgrid label { display: flex; gap: 8px; align-items: center; background: #0f0f11; border: 1px solid #24242a; border-radius: 8px; padding: 6px 8px; font-size: 12px; }
+    .mini { display: flex; gap: 6px; }
+    .mini button { padding: 6px 8px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Image Table Viewer · creature / attire / mood</h1>
+      <div class="controls">
+        <div class="field" style="grid-column: span 3;">
+          <label for="folder">Folder</label>
+          <select id="folder">
+            <option value="creature-05" selected>creature-05</option>
+            <option value="creature-attire-05">creature-attire-05</option>
+            <option value="creature-attire-mood-05">creature-attire-mood-05</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column: span 2;">
+          <label>Variants (00–06)</label>
+          <input id="variants" type="text" value="00-06" aria-label="Variant range" />
+        </div>
+        <div class="field" style="grid-column: span 2;">
+          <label>Thumb size (px)</label>
+          <input id="thumb" type="number" min="40" max="400" step="10" value="120" />
+        </div>
+        <div class="field" style="grid-column: span 3;">
+          <label>Preview background</label>
+          <select id="previewBg">
+            <option value="#000000" selected>Black</option>
+            <option value="#ffffff">White</option>
+            <option value="#00ff00">Neon green</option>
+          </select>
+        </div>
+        <div class="sticky-actions" style="grid-column: span 2; justify-content: flex-end;">
+          <button id="build">Build Table</button>
+          <button id="export" class="secondary" title="Download list of broken URLs as CSV">Export Broken</button>
+        </div>
+
+        <!-- Dynamic filter groups -->
+        <div id="group-creature" class="field" style="grid-column: span 12;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+            <label style="margin:0;">Creatures</label>
+            <div class="mini">
+              <button type="button" class="secondary" data-quick="creature:all">Select all</button>
+              <button type="button" class="secondary" data-quick="creature:none">Clear</button>
+            </div>
+          </div>
+          <div class="checkgrid" id="checks-creature"></div>
+        </div>
+
+        <div id="group-attire" class="field" style="grid-column: span 12; display:none;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+            <label style="margin:0;">Attire</label>
+            <div class="mini">
+              <button type="button" class="secondary" data-quick="attire:all">Select all</button>
+              <button type="button" class="secondary" data-quick="attire:none">Clear</button>
+            </div>
+          </div>
+          <div class="checkgrid" id="checks-attire"></div>
+        </div>
+
+        <div id="group-mood" class="field" style="grid-column: span 12; display:none;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px;">
+            <label style="margin:0;">Mood</label>
+            <div class="mini">
+              <button type="button" class="secondary" data-quick="mood:all">Select all</button>
+              <button type="button" class="secondary" data-quick="mood:none">Clear</button>
+            </div>
+          </div>
+          <div class="checkgrid" id="checks-mood"></div>
+        </div>
+
+        <div class="spacer" style="grid-column: 1 / -1"></div>
+        <div class="grid-note" style="grid-column: 1 / -1">Note: Filters update the generated combinations before loading images. Default folder is creature-05; all filters checked; preview background is black.</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="stats" class="status">Ready.</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:140px">Preview</th>
+          <th>URL</th>
+          <th>Parts</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </main>
+
+  <script>
+    const BASE = 'https://curriculum.code.org/media/musiclab/generate/dancer/';
+
+    const creature = [
+      {id: 'axolotl', text: 'axolotl'},
+      {id: 'cat', text: 'cat'},
+      {id: 'dog', text: 'dog'},
+      {id: 'flame', text: 'flame'},
+      {id: 'fox', text: 'fox'},
+      {id: 'frilled_lizard', text: 'frilled lizard'},
+      {id: 'frog', text: 'frog'},
+      {id: 'giraffe', text: 'giraffe'},
+      {id: 'jellyfish', text: 'jellyfish'},
+      {id: 'koala', text: 'koala'},
+      {id: 'moose', text: 'moose'},
+      {id: 'mushroom', text: 'mushroom'},
+      {id: 'planet', text: 'planet'},
+      {id: 'rabbit', text: 'rabbit'},
+      {id: 'squirrel', text: 'squirrel'},
+      {id: 'tiger', text: 'tiger'},
+      {id: 'turtle', text: 'turtle'},
+      {id: 'volcano', text: 'volcano'},
+      {id: 'wolf', text: 'wolf'},
+      {id: 'zombie', text: 'zombie'},
+    ];
+
+    const attire = [
+      {id: 'beanie', text: 'beanie'},
+      {id: 'colorful_hair', text: 'colorful hair'},
+      {id: 'crown', text: 'crown'},
+      {id: 'headphones', text: 'headphones'},
+      {id: 'headscarf', text: 'headscarf'},
+      {id: 'sunglasses', text: 'sunglasses'},
+      {id: 'no_accessories', text: 'no accessories'},
+    ];
+
+    const mood = [
+      {id: 'confused', text: 'confused'},
+      {id: 'fierce', text: 'fierce'},
+      {id: 'happy', text: 'happy'},
+      {id: 'silly', text: 'silly'},
+      {id: 'sleepy', text: 'sleepy'},
+      {id: 'surprised', text: 'surprised'},
+    ];
+
+    const el = {
+      folder: document.getElementById('folder'),
+      variants: document.getElementById('variants'),
+      thumb: document.getElementById('thumb'),
+      previewBg: document.getElementById('previewBg'),
+      build: document.getElementById('build'),
+      exportBtn: document.getElementById('export'),
+      tbody: document.getElementById('tbody'),
+      stats: document.getElementById('stats'),
+      groupCreature: document.getElementById('group-creature'),
+      groupAttire: document.getElementById('group-attire'),
+      groupMood: document.getElementById('group-mood'),
+      checksCreature: document.getElementById('checks-creature'),
+      checksAttire: document.getElementById('checks-attire'),
+      checksMood: document.getElementById('checks-mood'),
+    };
+
+    function pad2(n) { return String(n).padStart(2, '0'); }
+
+    function parseVariantRange(txt) {
+      txt = (txt || '').trim();
+      if (!txt) return [...Array(7)].map((_,i)=>pad2(i));
+      if (txt.includes(',')) {
+        return txt.split(',').map(s=>pad2(parseInt(s.trim(),10)||0));
+      }
+      if (txt.includes('-')) {
+        const [a,b] = txt.split('-');
+        const start = parseInt(a,10); const end = parseInt(b,10);
+        const out = [];
+        for (let i = start; i <= end; i++) out.push(pad2(i));
+        return out;
+      }
+      const n = parseInt(txt,10);
+      if (!Number.isNaN(n)) return [pad2(n)];
+      return [...Array(7)].map((_,i)=>pad2(i));
+    }
+
+    // Selection state (all checked by default)
+    const selected = {
+      creature: new Set(creature.map(x=>x.id)),
+      attire: new Set(attire.map(x=>x.id)),
+      mood: new Set(mood.map(x=>x.id)),
+    };
+
+    function renderChecks(container, list, key) {
+      container.innerHTML = '';
+      for (const item of list) {
+        const id = `${key}-${item.id}`;
+        const wrap = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.id = id; cb.value = item.id; cb.checked = selected[key].has(item.id);
+        cb.addEventListener('change', () => {
+          if (cb.checked) selected[key].add(item.id); else selected[key].delete(item.id);
+        });
+        const span = document.createElement('span'); span.textContent = item.text;
+        wrap.appendChild(cb); wrap.appendChild(span);
+        container.appendChild(wrap);
+      }
+    }
+
+    function bindQuickButtons() {
+      document.querySelectorAll('[data-quick]').forEach(btn => {
+        btn.onclick = () => {
+          const [key, action] = btn.dataset.quick.split(':');
+          const list = key === 'creature' ? creature : key === 'attire' ? attire : mood;
+          selected[key] = new Set(action === 'all' ? list.map(x=>x.id) : []);
+          renderChecks(key === 'creature' ? el.checksCreature : key === 'attire' ? el.checksAttire : el.checksMood, list, key);
+        };
+      });
+    }
+
+    function applyFolderVisibility(folder) {
+      el.groupCreature.style.display = '';
+      el.groupAttire.style.display = (folder.includes('attire')) ? '' : 'none';
+      el.groupMood.style.display = (folder.includes('mood')) ? '' : 'none';
+    }
+
+    function* combos(folder) {
+      const C = [...selected.creature];
+      const A = [...selected.attire];
+      const M = [...selected.mood];
+      if (folder === 'creature-05') {
+        for (const c of C) yield {parts:[c]};
+      } else if (folder === 'creature-attire-05') {
+        for (const c of C) for (const a of A) yield {parts:[c,a]};
+      } else if (folder === 'creature-attire-mood-05') {
+        for (const c of C) for (const a of A) for (const m of M) yield {parts:[c,a,m]};
+      }
+    }
+
+    function buildUrl(folder, parts, variant) {
+      const name = parts.join('-') + '-' + variant + '.png';
+      return `${BASE}${folder}/${name}`;
+    }
+
+    function clearTable() { el.tbody.innerHTML = ''; }
+
+    function updateStats({total, ok, bad}) {
+      const warn = total - ok - bad;
+      el.stats.innerHTML = `Generated <strong>${total}</strong> URLs · <span class="pill ok">OK ${ok}</span> <span class="pill bad">Broken ${bad}</span> <span class="pill warn">Pending ${warn}</span>`;
+    }
+
+    function asCSV(rows) {
+      const header = ['url','folder','creature','attire','mood','variant','status'];
+      const lines = [header.join(',')];
+      for (const r of rows) {
+        const parts = r.parts;
+        const [c,a,m] = [parts[0]||'', parts[1]||'', parts[2]||''];
+        lines.push([r.url, r.folder, c, a, m, r.variant, r.status].join(','));
+      }
+      return lines.join('\n');
+    }
+
+    function download(name, text) {
+      const blob = new Blob([text], {type: 'text/csv'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 150);
+    }
+
+    async function buildTable() {
+      const folder = el.folder.value;
+      const variants = parseVariantRange(el.variants.value);
+      const thumb = Math.max(40, Math.min(400, parseInt(el.thumb.value,10) || 120));
+
+      document.documentElement.style.setProperty('--prev-bg', el.previewBg.value);
+      document.querySelectorAll('.preview').forEach(div => div.style.width = div.style.height = thumb + 'px');
+
+      clearTable();
+
+      const allRows = [];
+      let total = 0, ok = 0, bad = 0;
+
+      for (const combo of combos(folder)) {
+        for (const v of variants) {
+          total++;
+          const url = buildUrl(folder, combo.parts, v);
+          const tr = document.createElement('tr');
+          tr.dataset.status = 'pending';
+
+          const tdPrev = document.createElement('td');
+          const prev = document.createElement('div'); prev.className = 'preview'; prev.style.width = prev.style.height = thumb + 'px';
+          const img = document.createElement('img');
+          img.loading = 'lazy';
+          img.decoding = 'async';
+          img.alt = combo.parts.join(' · ') + ' · ' + v;
+          img.src = url;
+
+          img.addEventListener('load', () => {
+            tr.dataset.status = 'ok';
+            ok++; updateStats({total, ok, bad}); applyFilter();
+          }, {once:true});
+          img.addEventListener('error', () => {
+            tr.dataset.status = 'bad';
+            tr.style.background = 'rgba(255, 107, 107, .07)';
+            bad++; updateStats({total, ok, bad}); applyFilter();
+          }, {once:true});
+
+          prev.appendChild(img);
+          tdPrev.appendChild(prev);
+
+          const tdUrl = document.createElement('td');
+          const a = document.createElement('a'); a.href = url; a.target = '_blank'; a.rel = 'noreferrer noopener'; a.textContent = url;
+          tdUrl.appendChild(a);
+
+          const tdParts = document.createElement('td');
+          tdParts.innerHTML = `<code>${combo.parts.join(' | ')}</code> <span class="pill warn" title="Variant">${v}</span>`;
+
+          const tdStatus = document.createElement('td');
+          tdStatus.className = 'status';
+          tdStatus.textContent = 'pending…';
+
+          const row = {url, folder, parts: combo.parts, variant: v, status: 'pending', tr, tdStatus};
+          allRows.push(row);
+
+          tr.appendChild(tdPrev);
+          tr.appendChild(tdUrl);
+          tr.appendChild(tdParts);
+          tr.appendChild(tdStatus);
+          el.tbody.appendChild(tr);
+
+          const onResolve = (ok) => {
+            row.status = ok ? 'ok' : 'broken';
+            tdStatus.innerHTML = ok ? '<span class="pill ok">ok</span>' : '<span class="pill bad">broken</span>';
+          };
+          img.addEventListener('load', () => onResolve(true), {once:true});
+          img.addEventListener('error', () => onResolve(false), {once:true});
+        }
+      }
+
+      updateStats({total, ok, bad});
+
+      function applyFilter() {
+        // No row-level filter beyond pending/ok/broken here; generation was pre-filtered by checkboxes.
+      }
+
+      el.exportBtn.onclick = () => {
+        const broken = allRows.filter(r => r.status === 'broken');
+        const csv = asCSV(broken);
+        const name = `${folder}-broken.csv`;
+        download(name, csv);
+      };
+    }
+
+    // Initial render of filter checkboxes
+    function setupUI() {
+      renderChecks(el.checksCreature, creature, 'creature');
+      renderChecks(el.checksAttire, attire, 'attire');
+      renderChecks(el.checksMood, mood, 'mood');
+      bindQuickButtons();
+      applyFolderVisibility(el.folder.value);
+    }
+
+    el.folder.addEventListener('change', () => {
+      applyFolderVisibility(el.folder.value);
+    });
+
+    el.previewBg.addEventListener('change', () => {
+      document.documentElement.style.setProperty('--prev-bg', el.previewBg.value);
+    });
+
+    el.build.addEventListener('click', buildTable);
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setupUI();
+      buildTable();
+    });
+  </script>
+</body>
+</html>
