@@ -200,10 +200,14 @@
         padding: 6px 8px;
         font-size: 12px;
       }
+      /* Stack the three color swatches vertically */
       .colors {
-        display: inline-flex;
+        display: flex;
+        flex-direction: column;
         gap: 6px;
-        align-items: center;
+        align-items: flex-start;
+        justify-content: center;
+        height: 100%;
       }
       .sw {
         width: 18px;
