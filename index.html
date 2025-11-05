@@ -141,8 +141,9 @@
         width: 120px;
         height: 120px;
         background: var(--prev-bg);
-        border: 1px dashed #2a2a2f;
-        border-radius: 12px;
+        /* border: 1px dashed #2a2a2f;
+        border-radius: 12px; */
+        padding: 10px;
         display: grid;
         place-items: center;
         overflow: hidden;
@@ -160,19 +161,12 @@
         padding: 2px 6px;
         border-radius: 6px;
       }
-      .grid-note {
-        font-size: 12px;
-        color: var(--muted);
-      }
       .sticky-actions {
         position: static;
         top: 70px;
         z-index: 9;
         display: flex;
         gap: 8px;
-      }
-      .spacer {
-        height: 6px;
       }
       .checkgrid {
         display: grid;
@@ -318,9 +312,10 @@
           <div class="field" style="grid-column: span 2">
             <label>Preview background</label>
             <select id="previewBg">
-              <option value="#000000" selected>Black</option>
+              <option value="#000000">Black</option>
               <option value="#ffffff">White</option>
               <option value="#00ff00">Neon green</option>
+              <option value="#007f00" selected>Green</option>
             </select>
           </div>
           <div class="field" style="grid-column: span 1">
@@ -438,13 +433,6 @@
               </div>
             </div>
             <div class="checkgrid" id="checks-mood"></div>
-          </div>
-
-          <div class="spacer" style="grid-column: 1 / -1"></div>
-          <div class="grid-note" style="grid-column: 1 / -1">
-            Note: Filters update the generated combinations before loading
-            images. Default folder is creature-05; all filters checked; preview
-            background is black.
           </div>
         </div>
       </div>
