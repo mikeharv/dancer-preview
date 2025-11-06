@@ -447,7 +447,7 @@
             <th style="width: 90px">Body Colors</th>
             <th>Animate</th>
             <th>URL</th>
-            <th>Parts</th>
+            <th>Copy Filename</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -856,11 +856,32 @@
             metaDiv.appendChild(metaA);
             tdUrl.appendChild(metaDiv);
 
-            // Parts cell
-            const tdParts = document.createElement("td");
-            tdParts.innerHTML = `<code>${combo.parts.join(
-              " | "
-            )}</code> <span class="pill warn" title="Variant">${v}</span>`;
+            // // Parts cell
+            // const tdParts = document.createElement("td");
+            // tdParts.innerHTML = `<code>${combo.parts.join(
+            //   " | "
+            // )}</code> <span class="pill warn" title="Variant">${v}</span>`;
+            // Copy Name cell (copies base name like "fox-00")
+            const tdCopy = document.createElement("td");
+            const copyBtn = document.createElement("button");
+            copyBtn.type = "button";
+            copyBtn.textContent = "Copy name";
+
+            // derive base name from the PNG url: .../<folder>/<basename>.png
+            let baseName = (url.match(/\/([^/]+)\.png$/) || [])[1] || "";
+            copyBtn.title = baseName || "name unavailable";
+
+            copyBtn.addEventListener("click", async () => {
+              if (!baseName) return;
+              try {
+                await navigator.clipboard.writeText(baseName);
+                const old = copyBtn.textContent;
+                copyBtn.textContent = "Copied!";
+                setTimeout(() => (copyBtn.textContent = old), 700);
+              } catch {}
+            });
+
+            tdCopy.appendChild(copyBtn);
 
             // Status cell
             const tdStatus = document.createElement("td");
@@ -882,7 +903,7 @@
             tr.appendChild(tdColors);
             tr.appendChild(tdAnimate);
             tr.appendChild(tdUrl);
-            tr.appendChild(tdParts);
+            tr.appendChild(tdCopy);
             tr.appendChild(tdStatus);
             el.tbody.appendChild(tr);
 
