@@ -279,7 +279,7 @@
       <div class="wrap">
         <h1>Image Table Viewer · creature / attire / mood</h1>
         <div class="controls">
-          <div class="field" style="grid-column: span 3">
+          <div class="field" style="grid-column: span 2">
             <label for="folder">Folder</label>
             <select id="folder">
               <option value="creature-05" selected>creature-05</option>
@@ -289,6 +289,15 @@
               </option>
             </select>
           </div>
+          <div class="field" style="grid-column: span 1">
+            <label
+              style="display: flex; gap: 8px; align-items: center; margin: 0"
+            >
+              <input id="useBlocklist" type="checkbox" />
+              <span>Use Block List</span>
+            </label>
+          </div>
+
           <div class="field" style="grid-column: span 2">
             <label>Variants (00–06)</label>
             <input
@@ -458,7 +467,14 @@
     <script>
       const BASE =
         "https://curriculum.code.org/media/musiclab/generate/dancer/";
-
+      const MANIFEST_URL =
+        "https://curriculum.code.org/media/musiclab/generate/dancer/manifest/adlib-manifest-test-03.json";
+      const blocklists = new Map();
+      function normalizeName(s) {
+        return String(s || "")
+          .trim()
+          .replace(/[=_\s]+/g, "-"); // underscores/equals/spaces -> hyphen
+      }
       const creature = [
         { id: "axolotl", text: "axolotl" },
         { id: "cat", text: "cat" },
@@ -515,7 +531,8 @@
         groupMood: document.getElementById("group-mood"),
         checksCreature: document.getElementById("checks-creature"),
         checksAttire: document.getElementById("checks-attire"),
-        checksMood: document.getElementById("checks-mood")
+        checksMood: document.getElementById("checks-mood"),
+        useBlocklist: document.getElementById("useBlocklist")
       };
 
       function pad2(n) {
@@ -722,6 +739,13 @@
       async function buildTable() {
         const folder = el.folder.value;
         const variants = parseVariantRange(el.variants.value);
+        const useBL = !!el.useBlocklist?.checked;
+        const manifestKey =
+          folder === "creature-attire-mood-05"
+            ? "creature-attire-mood-style-05"
+            : folder;
+        const allowedSet = useBL ? blocklists.get(manifestKey) : null;
+
         const thumb = Math.max(
           40,
           Math.min(400, parseInt(el.thumb.value, 10) || 120)
@@ -746,6 +770,13 @@
 
         for (const combo of combos(folder)) {
           for (const v of variants) {
+            // Base name without extension, e.g. "fox-03" or "dog-crown-00"
+            const comboBaseName = combo.parts.join("-") + "-" + v;
+            const normalized = normalizeName(comboBaseName);
+
+            if (useBL && (!allowedSet || !allowedSet.has(normalized))) {
+              continue; // hide anything not on the block list
+            }
             total++;
             const url = buildUrl(folder, combo.parts, v);
             const tr = document.createElement("tr");
@@ -954,7 +985,21 @@
 
       window.addEventListener("DOMContentLoaded", () => {
         setupUI();
-        buildTable();
+        fetch(MANIFEST_URL, { cache: "no-cache" })
+          .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+          .then((man) => {
+            const bl = man.blockList || {};
+            Object.keys(bl).forEach((key) => {
+              const set = new Set(bl[key].map(normalizeName));
+              blocklists.set(key, set);
+            });
+          })
+          .catch(() => {
+            // If manifest fails to load, the checkbox will simply have no effect
+          })
+          .finally(() => {
+            buildTable(); // build after we (try to) load the manifest
+          });
         // show/hide and scroll to top
         const toTopBtn = document.getElementById("toTopBtn");
         window.addEventListener("scroll", () => {
