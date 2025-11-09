@@ -699,6 +699,67 @@
         };
         return sw;
       }
+
+      // --- palette helpers (hex <-> RGBA, distance, inversion, improvement) ---
+      const COLOR_DISTANCE_REQUIRED = 0.32;
+
+      /** Convert #RRGGBB (or RRGGBB) to normalized [r,g,b,a] in 0..1; returns null if invalid */
+      function hexToRgba(hex) {
+        if (!hex) return null;
+        let h = String(hex).trim();
+        if (h.startsWith("#")) h = h.slice(1);
+        if (h.length === 3)
+          h = h
+            .split("")
+            .map((c) => c + c)
+            .join("");
+        if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+        const r = parseInt(h.slice(0, 2), 16) / 255;
+        const g = parseInt(h.slice(2, 4), 16) / 255;
+        const b = parseInt(h.slice(4, 6), 16) / 255;
+        return [r, g, b, 1];
+      }
+
+      /** Convert normalized [r,g,b,a] (0..1) to #RRGGBB (alpha ignored) */
+      function rgbaToHex(rgba) {
+        if (!rgba) return null;
+        const clamp = (v) => Math.max(0, Math.min(255, Math.round(v * 255)));
+        const [r, g, b] = rgba;
+        const to2 = (n) => n.toString(16).padStart(2, "0");
+        return "#" + to2(clamp(r)) + to2(clamp(g)) + to2(clamp(b));
+      }
+
+      /** Euclidean distance in RGB (normalized 0..1) */
+      function colorDistance(c1, c2) {
+        return Math.sqrt(
+          (c1[0] - c2[0]) * (c1[0] - c2[0]) +
+            (c1[1] - c2[1]) * (c1[1] - c2[1]) +
+            (c1[2] - c2[2]) * (c1[2] - c2[2])
+        );
+      }
+
+      /** Invert RGB, keep alpha */
+      function colorInverse(c) {
+        return [1 - c[0], 1 - c[1], 1 - c[2], c[3]];
+      }
+
+      /** Ensure secondary & tertiary are at least COLOR_DISTANCE_REQUIRED from primary */
+      function improvePalette(palette) {
+        const { primary, secondary, tertiary } = palette;
+        if (primary && secondary && tertiary) {
+          const secOK =
+            colorDistance(primary, secondary) >= COLOR_DISTANCE_REQUIRED;
+          const terOK =
+            colorDistance(primary, tertiary) >= COLOR_DISTANCE_REQUIRED;
+          return {
+            primary,
+            secondary: secOK ? secondary : colorInverse(secondary),
+            tertiary: terOK ? tertiary : colorInverse(tertiary)
+          };
+        }
+        return palette;
+      }
+
       // SVG “T-body” glyph: body_color fills base T, secondary = chest square, tertiary = pants
       function makeGlyph(bodyHex, secondaryHex, tertiaryHex) {
         const wrap = document.createElement("span");
@@ -833,14 +894,31 @@
                 const bc = data.body_color || data.bodyColor || null;
                 const sc = data.secondary_color || data.secondaryColor || null;
                 const tc = data.tertiary_color || data.tertiaryColor || null;
+
+                // (optional) keep swatches first — they’ll show the raw metadata
                 colorsWrap.replaceChildren(
                   makeSwatch(bc, "body_color"),
                   makeSwatch(sc, "secondary_color"),
                   makeSwatch(tc, "tertiary_color")
                 );
-                const glyph = makeGlyph(bc, sc, tc);
-                colorsWrap.replaceChildren(glyph);
+
+                // Build & improve the palette in RGBA
+                const pal = {
+                  primary: hexToRgba(bc),
+                  secondary: hexToRgba(sc),
+                  tertiary: hexToRgba(tc)
+                };
+                const improved = improvePalette(pal);
+
+                // Convert back to CSS hex for the glyph paints
+                const bcHex = rgbaToHex(improved.primary) || bc;
+                const scHex = rgbaToHex(improved.secondary) || sc;
+                const tcHex = rgbaToHex(improved.tertiary) || tc;
+
+                const glyph = makeGlyph(bcHex, scHex, tcHex);
+                colorsWrap.replaceChildren(glyph); // replace swatches with the improved glyph
               })
+
               .catch(() => {
                 // Leave placeholders if not found
               });
