@@ -453,7 +453,8 @@
         <thead>
           <tr>
             <th style="width: 140px">Preview</th>
-            <th style="width: 90px">Body Colors</th>
+            <th style="width: 90px">Original Body Colors</th>
+            <th style="width: 90px">Improved Body Colors</th>
             <th>Animate</th>
             <th>URL</th>
             <th>Copy Filename</th>
@@ -877,7 +878,7 @@
             prev.appendChild(img);
             tdPrev.appendChild(prev);
 
-            // Colors cell
+            // Colors cell (unadjusted)
             const tdColors = document.createElement("td");
             const colorsWrap = document.createElement("div");
             colorsWrap.className = "colors";
@@ -885,6 +886,12 @@
             colorsWrap.appendChild(makeSwatch("", "secondary_color"));
             colorsWrap.appendChild(makeSwatch("", "tertiary_color"));
             tdColors.appendChild(colorsWrap);
+
+            // NEW: Adjusted Body Colors cell (improved palette)
+            const tdAdjColors = document.createElement("td");
+            const adjWrap = document.createElement("div");
+            adjWrap.className = "colors";
+            tdAdjColors.appendChild(adjWrap);
 
             // Fetch metadata JSON next to the PNG and set swatch colors
             const metaUrl = metaUrlFromPng(url);
@@ -895,28 +902,20 @@
                 const sc = data.secondary_color || data.secondaryColor || null;
                 const tc = data.tertiary_color || data.tertiaryColor || null;
 
-                // (optional) keep swatches first — they’ll show the raw metadata
-                colorsWrap.replaceChildren(
-                  makeSwatch(bc, "body_color"),
-                  makeSwatch(sc, "secondary_color"),
-                  makeSwatch(tc, "tertiary_color")
-                );
+                // Left column: unadjusted glyph (raw metadata)
+                colorsWrap.replaceChildren(makeGlyph(bc, sc, tc));
 
-                // Build & improve the palette in RGBA
-                const pal = {
+                // Right column: adjusted glyph (improved palette)
+                const palIn = {
                   primary: hexToRgba(bc),
                   secondary: hexToRgba(sc),
                   tertiary: hexToRgba(tc)
                 };
-                const improved = improvePalette(pal);
-
-                // Convert back to CSS hex for the glyph paints
-                const bcHex = rgbaToHex(improved.primary) || bc;
-                const scHex = rgbaToHex(improved.secondary) || sc;
-                const tcHex = rgbaToHex(improved.tertiary) || tc;
-
-                const glyph = makeGlyph(bcHex, scHex, tcHex);
-                colorsWrap.replaceChildren(glyph); // replace swatches with the improved glyph
+                const palOut = improvePalette(palIn);
+                const bcHex = rgbaToHex(palOut.primary) || bc;
+                const scHex = rgbaToHex(palOut.secondary) || sc;
+                const tcHex = rgbaToHex(palOut.tertiary) || tc;
+                adjWrap.replaceChildren(makeGlyph(bcHex, scHex, tcHex));
               })
 
               .catch(() => {
@@ -1010,6 +1009,7 @@
 
             tr.appendChild(tdPrev);
             tr.appendChild(tdColors);
+            tr.appendChild(tdAdjColors);
             tr.appendChild(tdAnimate);
             tr.appendChild(tdCopy);
             tr.appendChild(tdUrl);
