@@ -517,6 +517,20 @@
         { id: "surprised", text: "surprised" }
       ];
 
+      const style = [
+        { id: "classic", text: "classic" },
+        { id: "fantasy", text: "fantasy" },
+        { id: "kpop", text: "K-pop" },
+        { id: "preppy", text: "preppy" },
+        { id: "retro", text: "retro" },
+        { id: "rock", text: "rock" },
+        { id: "scifi", text: "sci-fi" },
+        { id: "sporty", text: "sporty" },
+        { id: "streetwear", text: "streetwear" }
+      ];
+
+      const styles = [];
+
       const el = {
         folder: document.getElementById("folder"),
         variants: document.getElementById("variants"),
@@ -934,9 +948,31 @@
               if (!m) return;
               const path = m[1];
               const dancer = m[2];
-              const href = `https://staging-studio.code.org/courses/mix-move-ai-2025/units/1/lessons/1/levels/3?path=${encodeURIComponent(
+              let level;
+              let body = "default";
+              switch (folder) {
+                case "creature-attire-05":
+                  level = 4;
+                  break;
+                case "creature-attire-mood-05":
+                  level = 6;
+                  const bodyVariants = 6;
+                  const randomVariant = Math.floor(
+                    Math.random() * bodyVariants
+                  );
+                  body =
+                    style[Math.floor(Math.random() * style.length)].id +
+                    "-" +
+                    pad2(randomVariant);
+                  break;
+                default:
+                  level = 3;
+              }
+              const href = `https://staging-studio.code.org/courses/mix-move-ai-2025/units/1/lessons/1/levels/${level}?path=${encodeURIComponent(
                 path
-              )}&dancer=${encodeURIComponent(dancer)}&body=default`;
+              )}&dancer=${encodeURIComponent(dancer)}&body=${encodeURIComponent(
+                body
+              )}`;
               window.open(href, "_blank", "noopener");
             });
 
