@@ -66,6 +66,7 @@
       select,
       input[type="number"],
       input[type="text"] {
+        box-sizing: border-box;
         width: 100%;
         background: #0f0f11;
         color: var(--text);
@@ -170,7 +171,7 @@
       }
       .checkgrid {
         display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 8px;
         max-height: 200px;
         overflow: auto;
@@ -289,16 +290,25 @@
               </option>
             </select>
           </div>
-          <div class="field" style="grid-column: span 1">
+          <div class="field" style="grid-column: span 2">
+            <label for="useBlocklist" style="margin: 0">Manifest filter</label>
+            <select id="useBlocklist">
+              <option value="all" selected>All items</option>
+              <option value="blocked">Blocked only</option>
+              <option value="allowed">Allowed only</option>
+            </select>
+          </div>
+
+          <!-- <div class="field" style="grid-column: span 1">
             <label
               style="display: flex; gap: 8px; align-items: center; margin: 0"
             >
               <input id="useBlocklist" type="checkbox" />
               <span>Use Block List</span>
             </label>
-          </div>
+          </div> -->
 
-          <div class="field" style="grid-column: span 2">
+          <div class="field" style="grid-column: span 1">
             <label>Variants (00–06)</label>
             <input
               id="variants"
@@ -345,13 +355,6 @@
             style="grid-column: span 2; justify-content: flex-end"
           >
             <button id="build">Build Table</button>
-            <button
-              id="export"
-              class="secondary"
-              title="Download list of broken URLs as CSV"
-            >
-              Export Broken
-            </button>
           </div>
 
           <!-- Dynamic filter groups -->
@@ -537,7 +540,6 @@
         thumb: document.getElementById("thumb"),
         previewBg: document.getElementById("previewBg"),
         build: document.getElementById("build"),
-        exportBtn: document.getElementById("export"),
         tbody: document.getElementById("tbody"),
         stats: document.getElementById("stats"),
         groupCreature: document.getElementById("group-creature"),
@@ -661,39 +663,6 @@
         el.stats.innerHTML = `Generated <strong>${total}</strong> URLs · <span class="pill ok">OK ${ok}</span> <span class="pill bad">Broken ${bad}</span> <span class="pill warn">Pending ${warn}</span>`;
       }
 
-      function asCSV(rows) {
-        const header = [
-          "url",
-          "folder",
-          "creature",
-          "attire",
-          "mood",
-          "variant",
-          "status"
-        ];
-        const lines = [header.join(",")];
-        for (const r of rows) {
-          const parts = r.parts;
-          const [c, a, m] = [parts[0] || "", parts[1] || "", parts[2] || ""];
-          lines.push([r.url, r.folder, c, a, m, r.variant, r.status].join(","));
-        }
-        return lines.join("\n");
-      }
-
-      function download(name, text) {
-        const blob = new Blob([text], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = name;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-          a.remove();
-        }, 150);
-      }
-
       function makeSwatch(hex, title) {
         const sw = document.createElement("span");
         sw.className = "sw";
@@ -812,6 +781,8 @@
         return wrap;
       }
       async function buildTable() {
+        const mode = el.useBlocklist?.value || "all"; // "all" | "blocked" | "allowed"
+
         const folder = el.folder.value;
         const variants = parseVariantRange(el.variants.value);
         const useBL = !!el.useBlocklist?.checked;
@@ -819,6 +790,7 @@
           folder === "creature-attire-mood-05"
             ? "creature-attire-mood-style-05"
             : folder;
+        const blockedSet = blocklists.get(manifestKey) || null;
         const allowedSet = useBL ? blocklists.get(manifestKey) : null;
 
         const thumb = Math.max(
@@ -848,6 +820,13 @@
             // Base name without extension, e.g. "fox-03" or "dog-crown-00"
             const comboBaseName = combo.parts.join("-") + "-" + v;
             const normalized = normalizeName(comboBaseName);
+            if (mode === "blocked") {
+              if (!blockedSet || !blockedSet.has(normalized)) continue;
+            } else if (mode === "allowed") {
+              // allowed = present in UI universe but NOT in blocklist
+              if (blockedSet && blockedSet.has(normalized)) continue;
+              // if manifest failed to load (no blockedSet), "allowed" behaves like "all"
+            }
 
             if (useBL && (!allowedSet || !allowedSet.has(normalized))) {
               continue; // hide anything not on the block list
@@ -1065,13 +1044,6 @@
         }
 
         updateStats({ total, ok, bad });
-
-        el.exportBtn.onclick = () => {
-          const broken = allRows.filter((r) => r.status === "broken");
-          const csv = asCSV(broken);
-          const name = `${folder}-broken.csv`;
-          download(name, csv);
-        };
       }
 
       // Initial render of filter checkboxes
@@ -1095,24 +1067,25 @@
       });
 
       el.build.addEventListener("click", buildTable);
-
+      el.useBlocklist?.addEventListener("change", buildTable);
       window.addEventListener("DOMContentLoaded", () => {
         setupUI();
+        // Load manifest block list once, then build
         fetch(MANIFEST_URL, { cache: "no-cache" })
           .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
           .then((man) => {
             const bl = man.blockList || {};
             Object.keys(bl).forEach((key) => {
-              const set = new Set(bl[key].map(normalizeName));
-              blocklists.set(key, set);
+              blocklists.set(key, new Set(bl[key].map(normalizeName)));
             });
           })
           .catch(() => {
-            // If manifest fails to load, the checkbox will simply have no effect
+            // If manifest fails to load, we just won't filter by it
           })
           .finally(() => {
-            buildTable(); // build after we (try to) load the manifest
+            buildTable();
           });
+
         // show/hide and scroll to top
         const toTopBtn = document.getElementById("toTopBtn");
         window.addEventListener("scroll", () => {
